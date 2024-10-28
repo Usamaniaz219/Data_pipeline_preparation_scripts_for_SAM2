@@ -62,7 +62,6 @@ def process_mask_directory(root_mask_dir, output_dir):
                     cv2.imwrite(tile_output_path, tile)
                     print(f"Tile {idx} saved at: {tile_output_path}")
 
-# Example usage
 root_mask_dir = '/media/usama/SSD/Usama_dev_ssd/clewiston_masks_24/data/masks/'  # Root directory containing subdirectories of masks
 output_dir = '/media/usama/SSD/Usama_dev_ssd/clewiston_masks_24/data/tiling_masks_outputs/'  # Output directory for saving the tiles
 process_mask_directory(root_mask_dir, output_dir)
