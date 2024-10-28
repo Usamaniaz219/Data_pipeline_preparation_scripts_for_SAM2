@@ -57,8 +57,6 @@ def clean_up_images_and_masks(image_dir, mask_dir):
                 print(f"Deleted black mask and corresponding image: {mask_file} and {image_file}")
 
 
-
-# Example usage
 image_dir = '/media/usama/SSD/Usama_dev_ssd/clewiston_masks_24/tiling_images_and_masks_tiles_outputs/image_tiles_dir/'
 mask_dir = '/media/usama/SSD/Usama_dev_ssd/clewiston_masks_24/tiling_images_and_masks_tiles_outputs/masks_tiles_dir/'
 clean_up_images_and_masks(image_dir, mask_dir)
