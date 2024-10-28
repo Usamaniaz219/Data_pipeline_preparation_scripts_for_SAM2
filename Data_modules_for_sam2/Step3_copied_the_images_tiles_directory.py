@@ -20,7 +20,6 @@ def duplicate_images_for_masks(images_dir, masks_dir, output_dir):
                 shutil.copy(image_path, output_subfolder)  # Copy the image to the new subfolder
                 print(f"Copied {image_file} to {output_subfolder}")
 
-# Example usage
 images_dir = '/media/usama/SSD/Usama_dev_ssd/clewiston_masks_24/tiling_images_and_masks_tiles_outputs_24_oct_latest_results/Clewiston-Zoning-Map-page-001_modified_image_tiles/'  # Directory containing the images you want to copy
 masks_dir = '/media/usama/SSD/Usama_dev_ssd/clewiston_masks_24/data/tiling_masks_outputs/Clewiston-Zoning-Map-page-001_modified_masks/'  # Directory containing subdirectories for masks
 output_dir = '/media/usama/SSD/Usama_dev_ssd/clewiston_masks_24/tiling_images_and_masks_tiles_outputs/image_tiles_dir/'  # Directory where the new subfolders with images should be created
