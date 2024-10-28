@@ -41,34 +41,3 @@ for subfolder in os.listdir(mask_tiles_dir):
 print("Image file renaming completed.")
 
 
-# # Create target directories if they don't exist
-# os.makedirs(target_image_dir, exist_ok=True)
-# os.makedirs(target_mask_dir, exist_ok=True)
-
-# # Iterate through each subfolder in image_tiles_dir
-# for subfolder in os.listdir(image_tiles_dir):
-#     image_subfolder_path = os.path.join(image_tiles_dir, subfolder)
-#     mask_subfolder_path = os.path.join(mask_tiles_dir, subfolder)
-
-#     # Check if the corresponding mask subfolder exists
-#     if os.path.isdir(image_subfolder_path) and os.path.isdir(mask_subfolder_path):
-#         for image_file in os.listdir(image_subfolder_path):
-#             # Extract the numeric part of the image file name for matching
-#             image_num = image_file.split('_')[-1].split('.')[0]
-
-#             # Construct the expected mask file name
-#             mask_file = f"{subfolder}_tile_{image_num}.jpg"
-#             mask_file_path = os.path.join(mask_subfolder_path, mask_file)
-
-#             # If the corresponding mask file exists, copy both files to target folders
-#             if os.path.exists(mask_file_path):
-#                 # Copy image file
-#                 image_file_path = os.path.join(image_subfolder_path, image_file)
-#                 shutil.copy(image_file_path, os.path.join(target_image_dir, image_file))
-
-#                 # Copy mask file
-#                 shutil.copy(mask_file_path, os.path.join(target_mask_dir, mask_file))
-#             else:
-#                 print(f"Warning: No corresponding mask file for {image_file} in {subfolder}")
-
-# print("Files copied successfully with one-to-one correspondence.")
