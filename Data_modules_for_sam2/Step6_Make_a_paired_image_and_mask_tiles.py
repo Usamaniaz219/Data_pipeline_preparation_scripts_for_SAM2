@@ -20,7 +20,7 @@ for subfolder in os.listdir(image_tiles_dir):
             # Construct full file path and move the file
             source_image_file = os.path.join(image_subfolder_path, image_file)
             target_image_file = os.path.join(target_image_dir, image_file)
-            shutil.move(source_image_file, target_image_file)
+            shutil.copy(source_image_file, target_image_file)
 
 # Move files from each subdirectory in mask_tiles_dir to target_mask_dir
 for subfolder in os.listdir(mask_tiles_dir):
@@ -31,6 +31,6 @@ for subfolder in os.listdir(mask_tiles_dir):
             # Construct full file path and move the file
             source_mask_file = os.path.join(mask_subfolder_path, mask_file)
             target_mask_file = os.path.join(target_mask_dir, mask_file)
-            shutil.move(source_mask_file, target_mask_file)
+            shutil.copy(source_mask_file, target_mask_file)
 
-print("Files moved successfully to image_tiles_25_oct_latest and mask_tiles_25_oct_latest.")
+print("Files copied successfully to image_tiles_25_oct_latest and mask_tiles_25_oct_latest.")
