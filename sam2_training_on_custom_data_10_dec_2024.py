@@ -14,10 +14,6 @@ mask_dir = '/media/usama/SSD/Data_for_SAM2_model_Finetuning/notebook/training_da
 txt_dir = '/media/usama/SSD/Data_for_SAM2_model_Finetuning/notebook/training_data_sam2_22/train_data_for_sam2_contains_only_one_copy/txt_files/'
 
 
-# image_dir = '/media/usama/SSD/Data_for_SAM2_model_Finetuning/notebook/data_1/images/'
-# mask_dir = '/media/usama/SSD/Data_for_SAM2_model_Finetuning/notebook/data_1/masks/'
-# txt_dir = '/media/usama/SSD/Data_for_SAM2_model_Finetuning/notebook/data_1/txt_files/'
-
 sam2_checkpoint = "sam2_hiera_large.pt"  # @param ["sam2_hiera_tiny.pt", "sam2_hiera_small.pt", "sam2_hiera_base_plus.pt", "sam2_hiera_large.pt"]
 model_cfg = "sam2_hiera_l.yaml" # @param ["sam2_hiera_t.yaml", "sam2_hiera_s.yaml", "sam2_hiera_b+.yaml", "sam2_hiera_l.yaml"]
 
