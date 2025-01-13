@@ -9,8 +9,12 @@ from sam2.build_sam import build_sam2
 from sam2.sam2_image_predictor import SAM2ImagePredictor
 
 
-image_path = "/media/usama/SSD/Data_for_SAM2_model_Finetuning/Sam2_fine_tuning_/segment-anything-2/9_jan_2025_results_meanshift/ca_colma_input/ca_colma_step_6_after_dilation_and_erosion/image_tiles_copied/"
-mask_path  = "/media/usama/SSD/Data_for_SAM2_model_Finetuning/Sam2_fine_tuning_/segment-anything-2/9_jan_2025_results_meanshift/ca_colma_input/ca_colma_step_6_after_dilation_and_erosion/mask_tiles_copied/"
+image_path = "/media/usama/SSD/Data_for_SAM2_model_Finetuning/Sam2_fine_tuning_/segment-anything-2/13_jan_2025_automated_inference_res/image_tiles_copied/"
+mask_path  = "/media/usama/SSD/Data_for_SAM2_model_Finetuning/Sam2_fine_tuning_/segment-anything-2/13_jan_2025_automated_inference_res/mask_tiles_/"
+
+# image_path = "/media/usama/SSD/Data_for_SAM2_model_Finetuning/Sam2_fine_tuning_/segment-anything-2/13_jan_2025_automated_inference_res/image_tiles_copied/"
+# mask_path  = "/media/usama/SSD/Data_for_SAM2_model_Finetuning/Sam2_fine_tuning_/segment-anything-2/13_jan_2025_automated_inference_res/ori_masks_polygons_merged/"
+
 org_mask_path = "/media/usama/SSD/Data_for_SAM2_model_Finetuning/Sam2_fine_tuning_/segment-anything-2/9_jan_2025_results_meanshift/ca_colma_input/ca_colma_step_6_after_dilation_and_erosion/mask_tiles_copied_11/"  
 # txt_files_path = "/media/usama/SSD/Data_for_SAM2_model_Finetuning/Sam2_fine_tuning_/segment-anything-2/9_jan_2025_results_meanshift/ca_colma_input/ca_colma_step_6_after_dilation_and_erosion/txt_files_3_points/"
 
@@ -42,11 +46,18 @@ def automatic_foreground_prompt_selector_from_image(mask):
                 for py in range(y + 1, y + h - 1)
                 if cv2.pointPolygonTest(contour, (px, py), False) > 0  # Check if inside the contour
             ]
-
+            
             # Randomly select 4 unique points from the filtered points
             if len(contour_points) >= 4:
-                selected_indices = np.random.choice(len(contour_points), 3, replace=False)
-                selected_points = [contour_points[i] for i in selected_indices]
+                if cv2.contourArea(contour)<200:
+                    # pass
+                    selected_indices = np.random.choice(len(contour_points), 1, replace=False)
+                    selected_points = [contour_points[i] for i in selected_indices]
+                    print("length of selected points that's area is less than 200",len(selected_points))
+                else:
+                    selected_indices = np.random.choice(len(contour_points), 3, replace=False)
+                    selected_points = [contour_points[i] for i in selected_indices]
+                    # print("length of selected points that's area is more than 200",len(selected_points))
             else:
                 selected_points = contour_points
 
@@ -82,6 +93,7 @@ def automatic_foreground_prompt_selector(mask_images_dir):
 
             # Store the points in the dictionary
             selected_points_dict[filename] = all_selected_points
+            # all_selected_points = all_selected_points.clear()
 
     return selected_points_dict,selected_points
 
@@ -97,7 +109,8 @@ def load_image_and_points(image_dir, mask_dir,org_mask_dir):
         tuple: Processed image, resized mask, selected points, and image filename.
     """
     # Get points from the mask using the automatic selector
-    points_dict,all_selected_points = automatic_foreground_prompt_selector(mask_dir)
+    points_dict,selected_points = automatic_foreground_prompt_selector(mask_dir)
+    # all_selected_points = all_selected_points.clear()
     # print("points dictionary",points_dict)
 
     # List all images in the image directory
@@ -108,7 +121,7 @@ def load_image_and_points(image_dir, mask_dir,org_mask_dir):
         print("Processing image:", image_filename)
 
         # Construct corresponding mask file path
-        mask_file_path = os.path.join(org_mask_dir, image_filename)
+        mask_file_path = os.path.join(mask_dir, image_filename)
         if not os.path.exists(mask_file_path):
             print(f"Mask for {image_filename} not found. Skipping.")
             continue
@@ -144,6 +157,7 @@ def calculate_iou(pred_mask, ground_truth_mask):
 
 
 def testing_loop(input_points):
+        
 
     # for idx,(img1,input_points_21, img_name) in enumerate(data_generator_41):
         # Load the fine-tuned model
@@ -151,7 +165,7 @@ def testing_loop(input_points):
         model_cfg = "sam2_hiera_l.yaml" 
         # print("input points label",np.ones([input_points_21.shape[0], 1]))
         print("image name",img_name)
-        FINE_TUNED_MODEL_WEIGHTS = "/media/usama/SSD/Data_for_SAM2_model_Finetuning/Sam2_fine_tuning_/segment-anything-2/fine_tuned_sam2_1_jan_2025_with_8_accumulation_steps_200.torch"
+        FINE_TUNED_MODEL_WEIGHTS = "fine_tuned_sam2_1_jan_2025_with_8_accumulation_steps_200.torch"
         sam2_model = build_sam2(model_cfg, sam2_checkpoint, device="cuda")
         # print(sam2_model)
         
@@ -161,7 +175,7 @@ def testing_loop(input_points):
         predictor = SAM2ImagePredictor(sam2_model)
         # print("predictor",predictor)
         # print(dir(predictor))
-        predictor.model.load_state_dict(torch.load(FINE_TUNED_MODEL_WEIGHTS))
+        # predictor.model.load_state_dict(torch.load(FINE_TUNED_MODEL_WEIGHTS))
 
         point_label = np.ones([input_points.shape[0], 1])
         point_label = point_label.flatten()
@@ -215,84 +229,216 @@ def testing_loop(input_points):
 
 
 # Main function
-for idx,(img1,gt_mask,input_points_21, img_name) in enumerate(data_generator_41):
+# After
 
-    print("points before",input_points_21)
+# Ensure the output directory exists
+output_txt_files_dir = "/media/usama/SSD/Data_for_SAM2_model_Finetuning/Sam2_fine_tuning_/segment-anything-2/13_jan_2025_automated_inference_res//txt_files_1"
+output_masks_dir ="/media/usama/SSD/Data_for_SAM2_model_Finetuning/Sam2_fine_tuning_/segment-anything-2/13_jan_2025_automated_inference_res/predicted_masks_1"
+os.makedirs(output_txt_files_dir, exist_ok=True)
+os.makedirs(output_masks_dir, exist_ok=True)
+
+for idx, (img1, gt_mask, input_points_21, img_name) in enumerate(data_generator_41):
+    # print("Image shape:", img1.shape)
+    # print("Mask shape:", gt_mask.shape)
+    print("Points before:", input_points_21)
     print("################################")
-    # input_points_21 = [input_points_21]
-    # print("input points",input_points_21)
-    # print("image shape",img1.shape)
-    # print("mask shape",gt_mask.shape)
-    seg_map = testing_loop(input_points_21)
-    _,gt_mask = cv2.threshold(gt_mask,0,255,cv2.THRESH_BINARY)
-    iou = calculate_iou(seg_map,gt_mask)
-
-    # print("seg map shape",seg_map.shape)
-    print("iou",iou)
     
-    if iou < 0.75:
-        max_itertions = 5
-        for iteration in range(max_itertions):
+    # Initial segmentation and IoU
+    seg_map = testing_loop(input_points_21)
+    iou = calculate_iou(seg_map, gt_mask)
+    print("Initial IoU:", iou)
 
+    # Initialize variables to retain the best segmentation map
+    best_iou = iou
+    best_seg_map = seg_map
+    best_prompt = input_points_21  # Initialize with the initial points
+    
+    max_iterations = 3
+    lower_bound = 0.75
+    upper_bound = 0.99
+
+    print("Best prompt",best_prompt)
+
+    # Perform refinement if IoU is below the lower bound
+    if iou < lower_bound:
+        for iteration in range(max_iterations):
             print(f"Iteration {iteration + 1}:")
-            
-            print("Image name",img_name)
-            selected_points,all_selected_points = automatic_foreground_prompt_selector_from_image(gt_mask)
-            input_points_31= np.array(selected_points)
-            print("points after",input_points_31)
-            print("################################")
+            print("Image name:", img_name)
 
-            seg_map_ = testing_loop(input_points_31)
-            iou = calculate_iou(seg_map_, gt_mask)
-            print("IoU:", iou)
-            if iou > 0.7:
-                print("IoU is acceptable. Ending process.")
-                break
+            # Generate new points for refinement
+            selected_points, all_selected_points_1 = automatic_foreground_prompt_selector_from_image(gt_mask)
+            if len(all_selected_points_1) > 0:
+                input_points_31 = np.array(all_selected_points_1)
+                print("Points after selection:", input_points_31)
+
+                # Generate new segmentation map and compute IoU
+                seg_map_ = testing_loop(input_points_31)
+                iou = calculate_iou(seg_map_, gt_mask)
+                print("Updated IoU:", iou)
+
+                # Update the best segmentation map and IoU if it improves
+                if iou > best_iou:
+                    best_iou = iou
+                    best_seg_map = seg_map_
+                    best_prompt = input_points_31  # Update best prompt
+                    print("Best IoU updated:", best_iou)
+
+                # Check if IoU is within the acceptable range
+                if lower_bound <= iou < upper_bound:
+                    print("IoU is now within the acceptable range. Ending process.")
+                    break
             else:
-                print("IoU is low")
+                print("No valid points selected. Skipping iteration.")
 
-
-        
+        # Retain the best segmentation map and IoU after iterations
+        print(f"Final retained IoU after refinement: {best_iou}")
     else:
-       print("Max iterations reached. IoU still below threshold.")
+        print(f"Initial IoU {iou} is already within the acceptable range.")
+
+    # Define the file name based on the image name
+    # print("image name filename",os.path.splitext(img_name)[0])
+    txt_filename = os.path.join(output_txt_files_dir, f"{os.path.splitext(img_name)[0]}.txt")
+
+    
+    # Save the best prompt and IoU to the text file
+    with open(txt_filename, "w") as file:
+       
+         for point in best_prompt:
+            file.write(f"{point[0]},{point[1]}\n")
+
+    
+    cv2.imwrite(f"{output_masks_dir}/{img_name}",best_seg_map)
+   
+   
+    
 
 
 
 
-# def main():
-#     ground_truth_mask_path = r"c:\Users\VAIO\Downloads\test_data\masks\ca_colma_1\3\ca_colma_4.jpg"
-
-#     # # Load and preprocess the ground truth mask
-#     # grd_mask = load_and_preprocess_mask(ground_truth_mask_path)
-
-#     # # Iterative IoU calculation
-#     # max_iterations = 5
-#     # for iteration in range(max_iterations):
-#     #     print(f"Iteration {iteration + 1}:")
-        
-#     #     # Generate predicted mask using the DNN
-#     #     pred_mask = generate_predicted_mask_with_dnn()
-
-#     #     # Display masks
-#     #     display_mask("Predicted Mask", pred_mask)
-#     #     display_mask("Ground Truth Mask", grd_mask)
-
-#     #     # Calculate IoU
-#     #     iou = calculate_iou(pred_mask, grd_mask)
-#     #     print("IoU:", iou)
-
-#     #     # Check IoU threshold
-#     #     if iou > 0.7:
-#     #         print("IoU is acceptable. Ending process.")
-#     #         break
-#     #     else:
-#     #         print("IoU is low. Retrying with updated DNN prediction...")
-
-#     # else:
-#     #     print("Max iterations reached. IoU still below threshold.")
-
-# if __name__ == "__main__":
-#     main()
 
 
-# testing_loop(data_generator_41)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# Before
+
+# for idx, (img1, gt_mask, input_points_21, img_name) in enumerate(data_generator_41):
+#     print("Image shape",img1.shape)
+#     print("mask shape",gt_mask.shape)
+#     print("Points before:", input_points_21)
+#     print("################################")
+    
+#     # Initial segmentation and IoU
+#     seg_map = testing_loop(input_points_21)
+#     iou = calculate_iou(seg_map, gt_mask)
+#     print("Initial IoU:", iou)
+
+#     # Initialize variables to retain the best segmentation map
+#     best_iou = iou
+#     best_seg_map = seg_map
+#     max_iterations = 3
+#     lower_bound = 0.75
+#     upper_bound = 0.99
+
+#     # Perform refinement if IoU is below the lower bound
+#     if iou < lower_bound:
+#         for iteration in range(max_iterations):
+#             print(f"Iteration {iteration + 1}:")
+#             print("Image name:", img_name)
+
+#             # Generate new points for refinement
+#             selected_points, all_selected_points_1 = automatic_foreground_prompt_selector_from_image(gt_mask)
+#             if len(all_selected_points_1) > 0:
+#                 input_points_31 = np.array(all_selected_points_1)
+#                 print("Points after selection:", input_points_31)
+
+#                 # Generate new segmentation map and compute IoU
+#                 seg_map_ = testing_loop(input_points_31)
+#                 iou = calculate_iou(seg_map_, gt_mask)
+#                 print("Updated IoU:", iou)
+
+#                 # Update the best segmentation map if IoU improves
+#                 if iou > best_iou:
+#                     best_iou = iou
+#                     best_seg_map = seg_map_
+#                     print("Best IoU updated:", best_iou)
+
+#                 # Check if IoU is within the acceptable range
+#                 if lower_bound <= iou < upper_bound:
+#                     print("IoU is now within the acceptable range. Ending process.")
+#                     break
+#             else:
+#                 print("No valid points selected. Skipping iteration.")
+
+#         # Retain the best segmentation map and IoU after iterations
+#         print(f"Final retained IoU after refinement: {best_iou}")
+#     else:
+#         print(f"Initial IoU {iou} is already within the acceptable range.")
+
+#     # Use `best_seg_map` as the final result for this image
+#     print("Processing completed for:", img_name)
+#     cv2.imshow("best_Seg_map",best_seg_map)
+#     cv2.waitKey(0)
+#     cv2.destroyAllWindows()
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
