@@ -8,15 +8,184 @@ import os
 from sam2.build_sam import build_sam2
 from sam2.sam2_image_predictor import SAM2ImagePredictor
 
+from shapely.geometry import Polygon
+from shapely.validation import make_valid
+import random
 
-image_path = "/media/usama/SSD/Data_for_SAM2_model_Finetuning/Sam2_fine_tuning_/segment-anything-2/13_jan_2025_automated_inference_res/image_tiles_copied/"
-mask_path  = "/media/usama/SSD/Data_for_SAM2_model_Finetuning/Sam2_fine_tuning_/segment-anything-2/13_jan_2025_automated_inference_res/mask_tiles_/"
+
+
+image_path = "/media/usama/SSD/Data_for_SAM2_model_Finetuning/Testing_SAM2_on_Meanshift_data/demo161/outputs/demo161/step_6_outputs_merged_res/image_tiles_/"
+mask_path  = "/media/usama/SSD/Data_for_SAM2_model_Finetuning/Testing_SAM2_on_Meanshift_data/demo161/outputs/demo161/step_6_outputs_merged_res/mask_tiles_/"
 
 # image_path = "/media/usama/SSD/Data_for_SAM2_model_Finetuning/Sam2_fine_tuning_/segment-anything-2/13_jan_2025_automated_inference_res/image_tiles_copied/"
 # mask_path  = "/media/usama/SSD/Data_for_SAM2_model_Finetuning/Sam2_fine_tuning_/segment-anything-2/13_jan_2025_automated_inference_res/ori_masks_polygons_merged/"
 
-org_mask_path = "/media/usama/SSD/Data_for_SAM2_model_Finetuning/Sam2_fine_tuning_/segment-anything-2/9_jan_2025_results_meanshift/ca_colma_input/ca_colma_step_6_after_dilation_and_erosion/mask_tiles_copied_11/"  
+# org_mask_path = "/media/usama/SSD/Data_for_SAM2_model_Finetuning/Sam2_fine_tuning_/segment-anything-2/9_jan_2025_results_meanshift/ca_colma_input/ca_colma_step_6_after_dilation_and_erosion/mask_tiles_copied_11/"  
 # txt_files_path = "/media/usama/SSD/Data_for_SAM2_model_Finetuning/Sam2_fine_tuning_/segment-anything-2/9_jan_2025_results_meanshift/ca_colma_input/ca_colma_step_6_after_dilation_and_erosion/txt_files_3_points/"
+
+def get_representative_points_within_contours(contours, contours_1,mask):
+    """Get representative points within each part of the polygon or a reduced number if there's intersection with contours_1."""
+    representative_points = []
+
+    def get_quadrant_representative_points(polygon):
+        """Get representative points from the quadrants of a polygon."""
+        min_x, min_y, max_x, max_y = polygon.bounds
+        center_x = (min_x + max_x) / 2
+        center_y = (min_y + max_y) / 2
+
+        quadrants = [
+            Polygon([(min_x, min_y), (center_x, min_y), (center_x, center_y), (min_x, center_y)]),
+            Polygon([(center_x, min_y), (max_x, min_y), (max_x, center_y), (center_x, center_y)]),
+            Polygon([(min_x, center_y), (center_x, center_y), (center_x, max_y), (min_x, max_y)]),
+            Polygon([(center_x, center_y), (max_x, center_y), (max_x, max_y), (center_x, max_y)])
+        ]
+
+        temp_points = []  # Temporary list to hold quadrant representative points
+
+        for quadrant in quadrants:
+            if quadrant.intersects(polygon):
+                intersection = quadrant.intersection(polygon)
+                if not intersection.is_empty:
+                    rep_point = intersection.representative_point()
+                    temp_points.append((rep_point.x, rep_point.y))
+
+        return temp_points
+    
+    def is_foreground_pixel(x, y, mask):
+        """Check if a point lies on the foreground pixel of the annotation mask."""
+        rows, cols = mask.shape
+        if 0 <= int(y) < rows and 0 <= int(x) < cols:
+#             return mask[int(y), int(x)] == 255  # Adjust based on foreground label
+            return mask[int(y), int(x)]>0
+        return False
+
+    for contour_1 in contours_1:
+        try:
+            shapely_polygon = Polygon([(point[0][0], point[0][1]) for point in contour_1])
+            shapely_polygon = make_valid(shapely_polygon)  # Ensure the polygon is valid
+            count = 0
+            tmp_pts = []
+
+            for contour in contours:
+                # shapely_polygon_1 = Polygon([(point[0][0], point[0][1]) for point in contour])
+                coordinates = []
+                for cont_point in contour:
+                    x = cont_point[0][0]
+                    y = cont_point[0][1]
+                    coordinates.append((x, y))
+                tmp_pts_1 =[]
+                if len(coordinates)>3:
+                # Create the polygon using the list of coordinates
+                    shapely_polygon_1 = Polygon(coordinates)
+                    shapely_polygon_1 = make_valid(shapely_polygon_1)  # Ensure the polygon is valid
+                    # plot_polygon
+                 
+
+                    if shapely_polygon.intersects(shapely_polygon_1):
+                        count += 1
+
+                        if shapely_polygon_1.area <= 200:
+                            rep_point = shapely_polygon_1.representative_point()
+                            representative_points.append(([(rep_point.x, rep_point.y)]))
+                            # print("representative point after area is less than 200",representative_points)
+                        else:
+                            pts = get_quadrant_representative_points(shapely_polygon_1)
+                            # print("points11",points)
+                            for pt in pts:
+                                if is_foreground_pixel(pt[0],pt[1],mask):
+                                    tmp_pts_1.append(pt)
+                            tmp_pts.append(tmp_pts_1)
+
+                            # tmp_pts.append(get_quadrant_representative_points(shapely_polygon_1))
+
+            if count > 1:
+                print("length of tmp_pts",len(tmp_pts))
+                if len(tmp_pts) >= 2:
+                    representative_points.append(list(random.sample(tmp_pts[0], 2)))
+                    representative_points.append(list(random.sample(tmp_pts[1], 2)))
+                elif tmp_pts:
+                    representative_points.append(list(tmp_pts[0]))
+            elif count==1:
+#                 rep_point = shapely_polygon.representative_point()
+#                 representative_points.append((rep_point.x, rep_point.y))  # To tackle the case where intersection is not present
+                if tmp_pts:
+                # If no multiple intersections, still get quadrant points
+                    
+                    representative_points.append(list(tmp_pts[0]))
+                    # print(representative_points)
+            else:
+                rep_point = shapely_polygon.representative_point()
+                representative_points.append([(rep_point.x, rep_point.y)])  # 
+
+                # if tmp_pts:
+                    
+                # # If no multiple intersections, still get quadrant points
+                #     representative_points.extend(tmp_pts[0])
+
+
+        except ValueError as e:
+            print(f"Error creating polygon: {e}")
+            continue
+
+    return representative_points
+
+def process_single_image_using_rep_point_logic(mask):
+    """
+    Process a single image and its corresponding mask to extract representative points.
+    
+    Parameters:
+        image_path (str): Path to the image file (not used directly in this function, kept for consistency).
+        mask_path (str): Path to the mask file.
+        output_txt_dir (str, optional): Directory to save the output .txt file with representative points. 
+                                        If None, the output is not saved to a file.
+    
+    Returns:
+        rep_points (list): Representative points extracted from the contours of the mask.
+    """
+    # ann_map = cv2.imread(mask_path, cv2.IMREAD_GRAYSCALE)
+    
+    if mask is None:
+        # print(f"Error: Could not read mask from path {mask_path}")
+        return []
+    
+
+     # Threshold the mask to create a binary image
+    _, binary_mask = cv2.threshold(mask, 127, 255, cv2.THRESH_BINARY)
+    contours_1, _ = cv2.findContours(binary_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    
+    # Erode the mask and find contours again
+    eroded_mask = cv2.erode(mask, np.ones((5, 5), np.uint8), iterations=2)
+    _, binary_mask_eroded = cv2.threshold(eroded_mask, 127, 255, cv2.THRESH_BINARY)
+    contours_2, _ = cv2.findContours(binary_mask_eroded, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    
+    # Choose the final mask based on contour count
+    final_mask = eroded_mask if len(contours_2) >= len(contours_1) else mask
+    _, binary_mask_final = cv2.threshold(final_mask, 100, 255, cv2.THRESH_BINARY)
+    contours, _ = cv2.findContours(binary_mask_final, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    
+    # Get representative points with intersection logic
+    rep_points = get_representative_points_within_contours(contours, contours_1, mask)
+    
+    # # Convert the representative points to a NumPy array
+    # if rep_points:
+    #     points_array = np.array([tuple(map(int, pt)) for pt_group in rep_points for pt in pt_group])
+    # else:
+    #     points_array = np.empty((0, 2), dtype=int)  # Empty array if no points found
+
+    # print("Representative points as NumPy array:", points_array)
+    
+    # # Save representative points to a text file (if output directory is provided)
+    # if output_txt_dir is not None:
+    #     os.makedirs(output_txt_dir, exist_ok=True)
+    #     txt_file_name = f'{os.path.splitext(os.path.basename(mask_path))[0]}.txt'
+    #     txt_file = os.path.join(output_txt_dir, txt_file_name)
+        
+    #     with open(txt_file, 'w') as file:
+    #         for pt in points_array:
+    #             file.write(f'{pt[0]}, {pt[1]}\n')
+
+    return rep_points
+
 
 def automatic_foreground_prompt_selector_from_image(mask):
      # Binarize the mask
@@ -55,7 +224,7 @@ def automatic_foreground_prompt_selector_from_image(mask):
                     selected_points = [contour_points[i] for i in selected_indices]
                     print("length of selected points that's area is less than 200",len(selected_points))
                 else:
-                    selected_indices = np.random.choice(len(contour_points), 3, replace=False)
+                    selected_indices = np.random.choice(len(contour_points), 4, replace=False)
                     selected_points = [contour_points[i] for i in selected_indices]
                     # print("length of selected points that's area is more than 200",len(selected_points))
             else:
@@ -68,7 +237,7 @@ def automatic_foreground_prompt_selector_from_image(mask):
 
 
 
-def automatic_foreground_prompt_selector(mask_images_dir):
+def automatic_foreground_prompt_selector_from_directory(mask_images_dir):
     """
     Select points automatically from mask images by processing contours.
 
@@ -97,7 +266,7 @@ def automatic_foreground_prompt_selector(mask_images_dir):
 
     return selected_points_dict,selected_points
 
-def load_image_and_points(image_dir, mask_dir,org_mask_dir):
+def load_image_and_points(image_dir, mask_dir):
     """
     Load images and corresponding mask points for processing.
 
@@ -109,7 +278,7 @@ def load_image_and_points(image_dir, mask_dir,org_mask_dir):
         tuple: Processed image, resized mask, selected points, and image filename.
     """
     # Get points from the mask using the automatic selector
-    points_dict,selected_points = automatic_foreground_prompt_selector(mask_dir)
+    points_dict,selected_points = automatic_foreground_prompt_selector_from_directory(mask_dir)
     # all_selected_points = all_selected_points.clear()
     # print("points dictionary",points_dict)
 
@@ -132,22 +301,24 @@ def load_image_and_points(image_dir, mask_dir,org_mask_dir):
 
         # Get points for the current image
         points = points_dict.get(image_filename, [])
+        # print("points before",points)
         # points = all_selected_points
-
+        points_after = np.array(points).reshape(-1, 1, 2)
+        # print("points after",points_after)
         # Resize image and mask
         r = np.min([1024 / Img.shape[1], 1024 / Img.shape[0]])  # Scaling factor
         Img = cv2.resize(Img, (int(Img.shape[1] * r), int(Img.shape[0] * r)))
         mask = cv2.resize(mask, (int(mask.shape[1] * r), int(mask.shape[0] * r)))
 
         # Yield the processed image, mask, points, and filename
-        yield Img, mask, np.array(points), image_filename
+        yield Img, mask, points_after, image_filename
     
 
 
 
 # data_generator_41  = load_image_and_points(image_path,txt_files_path,mask_path)
 
-data_generator_41  = load_image_and_points(image_path,mask_path,org_mask_path)
+data_generator_41  = load_image_and_points(image_path,mask_path)
 
 def calculate_iou(pred_mask, ground_truth_mask):
    
@@ -175,11 +346,11 @@ def testing_loop(input_points):
         predictor = SAM2ImagePredictor(sam2_model)
         # print("predictor",predictor)
         # print(dir(predictor))
-        # predictor.model.load_state_dict(torch.load(FINE_TUNED_MODEL_WEIGHTS))
-
+        predictor.model.load_state_dict(torch.load(FINE_TUNED_MODEL_WEIGHTS))
+        
         point_label = np.ones([input_points.shape[0], 1])
-        point_label = point_label.flatten()
-        print("points labels",point_label)
+        # point_label = point_label.flatten()
+        # print("points labels",point_label)
 
         # Perform inference and predict masks
         with torch.no_grad():
@@ -232,16 +403,17 @@ def testing_loop(input_points):
 # After
 
 # Ensure the output directory exists
-output_txt_files_dir = "/media/usama/SSD/Data_for_SAM2_model_Finetuning/Sam2_fine_tuning_/segment-anything-2/13_jan_2025_automated_inference_res//txt_files_1"
-output_masks_dir ="/media/usama/SSD/Data_for_SAM2_model_Finetuning/Sam2_fine_tuning_/segment-anything-2/13_jan_2025_automated_inference_res/predicted_masks_1"
+output_txt_files_dir = "/media/usama/SSD/Data_for_SAM2_model_Finetuning/Sam2_fine_tuning_/segment-anything-2/14_jan_2025_automated_inference_res//demo161_txt_files_"
+output_masks_dir ="/media/usama/SSD/Data_for_SAM2_model_Finetuning/Sam2_fine_tuning_/segment-anything-2/14_jan_2025_automated_inference_res/demo161_predicted_masks_"
 os.makedirs(output_txt_files_dir, exist_ok=True)
 os.makedirs(output_masks_dir, exist_ok=True)
 
 for idx, (img1, gt_mask, input_points_21, img_name) in enumerate(data_generator_41):
     # print("Image shape:", img1.shape)
     # print("Mask shape:", gt_mask.shape)
-    print("Points before:", input_points_21)
+    # print("Points before:", input_points_21)
     print("################################")
+
     
     # Initial segmentation and IoU
     seg_map = testing_loop(input_points_21)
@@ -268,8 +440,9 @@ for idx, (img1, gt_mask, input_points_21, img_name) in enumerate(data_generator_
             # Generate new points for refinement
             selected_points, all_selected_points_1 = automatic_foreground_prompt_selector_from_image(gt_mask)
             if len(all_selected_points_1) > 0:
-                input_points_31 = np.array(all_selected_points_1)
-                print("Points after selection:", input_points_31)
+                # input_points_31 = np.array(all_selected_points_1)
+                input_points_31 =  np.array(all_selected_points_1).reshape(-1, 1, 2)
+                # print("Points after selection:", input_points_31)
 
                 # Generate new segmentation map and compute IoU
                 seg_map_ = testing_loop(input_points_31)
@@ -287,30 +460,78 @@ for idx, (img1, gt_mask, input_points_21, img_name) in enumerate(data_generator_
                 if lower_bound <= iou < upper_bound:
                     print("IoU is now within the acceptable range. Ending process.")
                     break
-            else:
-                print("No valid points selected. Skipping iteration.")
 
-        # Retain the best segmentation map and IoU after iterations
-        print(f"Final retained IoU after refinement: {best_iou}")
-    else:
-        print(f"Initial IoU {iou} is already within the acceptable range.")
+    if best_iou<lower_bound:
+        rep_points= process_single_image_using_rep_point_logic(gt_mask)
+        # input_points_41 = np.array(rep_points)
+        rep_points_arr = []
+
+        for coord in rep_points:
+            transformed = [[int(coord[0][0] + 2), int(coord[0][1] + 2)]]
+            rep_points_arr.append(transformed)
+
+        # Convert the list to a numpy array
+        rep_array = np.array(rep_points_arr)
+        print("Points after rep point logic:", rep_array)
+        seg_map_ = testing_loop(rep_array)
+        print("ground truth mask shape",gt_mask.shape)
+        iou = calculate_iou(seg_map_, gt_mask)
+        print("Updated IoU after representative point :", iou)
+        if iou > best_iou:
+            best_iou = iou
+            best_seg_map = seg_map_
+            best_prompt = rep_array  # Update best prompt
+            print("Best IoU updated:", best_iou)
+
+
+
+
+    
+
+    #             print("No valid points selected. Skipping iteration.")
+
+    #     # Retain the best segmentation map and IoU after iterations
+    #     print(f"Final retained IoU after refinement: {best_iou}")
+    # else:
+    #     print(f"Initial IoU {iou} is already within the acceptable range.")
 
     # Define the file name based on the image name
     # print("image name filename",os.path.splitext(img_name)[0])
     txt_filename = os.path.join(output_txt_files_dir, f"{os.path.splitext(img_name)[0]}.txt")
 
     
-    # Save the best prompt and IoU to the text file
+    # # Save the best prompt and IoU to the text file
     with open(txt_filename, "w") as file:
        
-         for point in best_prompt:
-            file.write(f"{point[0]},{point[1]}\n")
+        for point in best_prompt:
+            for pt in point:
+                # if len(point) == 2:
+                file.write(f"{pt[0]},{pt[1]}\n")
+                # else:
+                    # print(f"Skipping invalid point: {point}")
+
+            # file.write(f"{point[0]},{point[1]}\n")
 
     
     cv2.imwrite(f"{output_masks_dir}/{img_name}",best_seg_map)
    
    
     
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
