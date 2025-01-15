@@ -14,14 +14,8 @@ import random
 
 
 
-image_path = "/media/usama/SSD/Data_for_SAM2_model_Finetuning/Testing_SAM2_on_Meanshift_data/demo161/outputs/demo161/step_6_outputs_merged_res/image_tiles_/"
-mask_path  = "/media/usama/SSD/Data_for_SAM2_model_Finetuning/Testing_SAM2_on_Meanshift_data/demo161/outputs/demo161/step_6_outputs_merged_res/mask_tiles_/"
-
-# image_path = "/media/usama/SSD/Data_for_SAM2_model_Finetuning/Sam2_fine_tuning_/segment-anything-2/13_jan_2025_automated_inference_res/image_tiles_copied/"
-# mask_path  = "/media/usama/SSD/Data_for_SAM2_model_Finetuning/Sam2_fine_tuning_/segment-anything-2/13_jan_2025_automated_inference_res/ori_masks_polygons_merged/"
-
-# org_mask_path = "/media/usama/SSD/Data_for_SAM2_model_Finetuning/Sam2_fine_tuning_/segment-anything-2/9_jan_2025_results_meanshift/ca_colma_input/ca_colma_step_6_after_dilation_and_erosion/mask_tiles_copied_11/"  
-# txt_files_path = "/media/usama/SSD/Data_for_SAM2_model_Finetuning/Sam2_fine_tuning_/segment-anything-2/9_jan_2025_results_meanshift/ca_colma_input/ca_colma_step_6_after_dilation_and_erosion/txt_files_3_points/"
+image_path = "/media/usama/SSD/Data_for_SAM2_model_Finetuning/Testing_SAM2_on_Meanshift_data/ca_colma_sam2_meanshift_overlay_res/image_tiles_copied/"
+mask_path  = "/media/usama/SSD/Data_for_SAM2_model_Finetuning/Testing_SAM2_on_Meanshift_data/ca_colma_sam2_meanshift_overlay_res/ori_masks_polygons_merged/"
 
 def get_representative_points_within_contours(contours, contours_1,mask):
     """Get representative points within each part of the polygon or a reduced number if there's intersection with contours_1."""
@@ -166,23 +160,6 @@ def process_single_image_using_rep_point_logic(mask):
     # Get representative points with intersection logic
     rep_points = get_representative_points_within_contours(contours, contours_1, mask)
     
-    # # Convert the representative points to a NumPy array
-    # if rep_points:
-    #     points_array = np.array([tuple(map(int, pt)) for pt_group in rep_points for pt in pt_group])
-    # else:
-    #     points_array = np.empty((0, 2), dtype=int)  # Empty array if no points found
-
-    # print("Representative points as NumPy array:", points_array)
-    
-    # # Save representative points to a text file (if output directory is provided)
-    # if output_txt_dir is not None:
-    #     os.makedirs(output_txt_dir, exist_ok=True)
-    #     txt_file_name = f'{os.path.splitext(os.path.basename(mask_path))[0]}.txt'
-    #     txt_file = os.path.join(output_txt_dir, txt_file_name)
-        
-    #     with open(txt_file, 'w') as file:
-    #         for pt in points_array:
-    #             file.write(f'{pt[0]}, {pt[1]}\n')
 
     return rep_points
 
@@ -193,13 +170,6 @@ def automatic_foreground_prompt_selector_from_image(mask):
 
         # Find contours in the mask
         contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-
-        # Apply erosion to ensure points are inside the contours
-        # kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (5, 5))
-        # eroded_mask = cv2.erode(mask, kernel, iterations=5)
-
-        # Find contours again on the eroded mask
-        # contours, _ = cv2.findContours(eroded_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
         # Prepare to store selected points for each contour
         all_selected_points = []
@@ -329,9 +299,6 @@ def calculate_iou(pred_mask, ground_truth_mask):
 
 def testing_loop(input_points):
         
-
-    # for idx,(img1,input_points_21, img_name) in enumerate(data_generator_41):
-        # Load the fine-tuned model
         sam2_checkpoint = "sam2_hiera_large.pt"  # @param ["sam2_hiera_tiny.pt", "sam2_hiera_small.pt", "sam2_hiera_base_plus.pt", "sam2_hiera_large.pt"]
         model_cfg = "sam2_hiera_l.yaml" 
         # print("input points label",np.ones([input_points_21.shape[0], 1]))
@@ -339,8 +306,6 @@ def testing_loop(input_points):
         FINE_TUNED_MODEL_WEIGHTS = "fine_tuned_sam2_1_jan_2025_with_8_accumulation_steps_200.torch"
         sam2_model = build_sam2(model_cfg, sam2_checkpoint, device="cuda")
         # print(sam2_model)
-        
-
         
         # Build net and load weights
         predictor = SAM2ImagePredictor(sam2_model)
@@ -379,6 +344,7 @@ def testing_loop(input_points):
 
         mask_11 = sorted_masks
         mask_bool = mask_11.astype(bool)
+        print("Mask bool shape",mask_bool.shape)
         # seg_map[mask_bool] = 1  
         
         # cv2.imshow("ground truth",mask_55)
@@ -392,9 +358,6 @@ def testing_loop(input_points):
         seg_map = seg_map.astype(np.uint8)
         _,seg_map = cv2.threshold(seg_map,0,255,cv2.THRESH_BINARY)
        
-        # cv2.imwrite(f"/media/usama/SSD/Data_for_SAM2_model_Finetuning/Sam2_fine_tuning_/segment-anything-2/9_jan_2025_results_meanshift/1_jan_checkpoint_results_200_epochs_8_jan_2025_using_original_mask/{img_name}",seg_map)
-        # cv2.imwrite(f"/media/usama/SSD/Data_for_SAM2_model_Finetuning/Sam2_fine_tuning_/segment-anything-2/9_jan_2025_results_meanshift/1_jan_checkpoint_results_200_epochs_8_jan_2025/_img1_{img_name}",img1)
-
         # print(idx)
         return seg_map
 
@@ -403,8 +366,8 @@ def testing_loop(input_points):
 # After
 
 # Ensure the output directory exists
-output_txt_files_dir = "/media/usama/SSD/Data_for_SAM2_model_Finetuning/Sam2_fine_tuning_/segment-anything-2/14_jan_2025_automated_inference_res//demo161_txt_files_"
-output_masks_dir ="/media/usama/SSD/Data_for_SAM2_model_Finetuning/Sam2_fine_tuning_/segment-anything-2/14_jan_2025_automated_inference_res/demo161_predicted_masks_"
+output_txt_files_dir = "/media/usama/SSD/Data_for_SAM2_model_Finetuning/Sam2_fine_tuning_/segment-anything-2/15_jan_2025_automated_inference_res/ca_colma_txt_files_20_iter_lower_bound_increased"
+output_masks_dir ="/media/usama/SSD/Data_for_SAM2_model_Finetuning/Sam2_fine_tuning_/segment-anything-2/15_jan_2025_automated_inference_res/ca_colma_predicted_masks_20_iter_lower_bound_increased"
 os.makedirs(output_txt_files_dir, exist_ok=True)
 os.makedirs(output_masks_dir, exist_ok=True)
 
@@ -425,8 +388,9 @@ for idx, (img1, gt_mask, input_points_21, img_name) in enumerate(data_generator_
     best_seg_map = seg_map
     best_prompt = input_points_21  # Initialize with the initial points
     
-    max_iterations = 3
-    lower_bound = 0.75
+    max_iterations = 20
+    # lower_bound = 0.88
+    lower_bound = 0.96
     upper_bound = 0.99
 
     print("Best prompt",best_prompt)
@@ -459,7 +423,7 @@ for idx, (img1, gt_mask, input_points_21, img_name) in enumerate(data_generator_
                 # Check if IoU is within the acceptable range
                 if lower_bound <= iou < upper_bound:
                     print("IoU is now within the acceptable range. Ending process.")
-                    break
+                    # break
 
     if best_iou<lower_bound:
         rep_points= process_single_image_using_rep_point_logic(gt_mask)
@@ -484,19 +448,6 @@ for idx, (img1, gt_mask, input_points_21, img_name) in enumerate(data_generator_
             print("Best IoU updated:", best_iou)
 
 
-
-
-    
-
-    #             print("No valid points selected. Skipping iteration.")
-
-    #     # Retain the best segmentation map and IoU after iterations
-    #     print(f"Final retained IoU after refinement: {best_iou}")
-    # else:
-    #     print(f"Initial IoU {iou} is already within the acceptable range.")
-
-    # Define the file name based on the image name
-    # print("image name filename",os.path.splitext(img_name)[0])
     txt_filename = os.path.join(output_txt_files_dir, f"{os.path.splitext(img_name)[0]}.txt")
 
     
@@ -507,11 +458,7 @@ for idx, (img1, gt_mask, input_points_21, img_name) in enumerate(data_generator_
             for pt in point:
                 # if len(point) == 2:
                 file.write(f"{pt[0]},{pt[1]}\n")
-                # else:
-                    # print(f"Skipping invalid point: {point}")
-
-            # file.write(f"{point[0]},{point[1]}\n")
-
+             
     
     cv2.imwrite(f"{output_masks_dir}/{img_name}",best_seg_map)
    
