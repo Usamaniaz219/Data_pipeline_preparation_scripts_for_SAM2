@@ -496,29 +496,28 @@ for idx, (img1, gt_dilated_mask,gt_org_mask, input_points_21, img_name) in enume
     if best_iou < lower_bound:
         # Process the image using representative point logic
         rep_points = process_single_image_using_rep_point_logic(gt_dilated_mask)
-        print("Rep points", rep_points)
-        rep_points_arr = []
-
+        print("Rep points:", rep_points)
+        
+        # Initialize transformed group
+        transformed_group = []
+    
         for rep_group in rep_points:
-            transformed_group = []
             for coord in rep_group:
                 # Ensure the coordinate is checked for being on the foreground
                 x, y = coord
                 if is_foreground_pixel(x, y, gt_org_mask):
-                    transformed_group.append([int(x), int(y)])
+                    # Append as a single-item nested list
+                    transformed_group.append([[int(x), int(y)]])
                 else:
                     print(f"Point ({x}, {y}) is not on the foreground.")
-            
-            if transformed_group:  # Add group only if it's not empty
-                rep_points_arr.append(transformed_group)
-        print("rep points array",rep_points_arr)
+        
         # Convert the list to a numpy array
-        rep_array = np.array([transformed_group], dtype=np.int32)
+        rep_array = np.array(transformed_group, dtype=np.int32)
         print("Points after rep point logic and foreground check:", rep_array)
-
+    
         # Process the transformed points
         seg_map_ = testing_loop(rep_array)
-        print("Ground truth mask shape", gt_dilated_mask.shape)
+        print("Ground truth mask shape:", gt_dilated_mask.shape)
         iou = calculate_iou(seg_map_, gt_dilated_mask)
         print("Updated IoU after representative point:", iou)
         
