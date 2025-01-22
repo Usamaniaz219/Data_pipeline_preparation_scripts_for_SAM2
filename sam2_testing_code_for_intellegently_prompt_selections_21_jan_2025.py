@@ -468,31 +468,6 @@ for idx, (img1, gt_dilated_mask,gt_org_mask, input_points_21, img_name) in enume
                     print("IoU is now within the acceptable range. Ending process.")
                     break
 
-    # if best_iou<lower_bound:
-    #     rep_points= process_single_image_using_rep_point_logic(gt_dilated_mask)
-    #     print("Rep points",rep_points)
-    #     # input_points_41 = np.array(rep_points)
-    #     rep_points_arr = []
-
-    #     for coord in rep_points:
-    #         transformed = [[int(coord[0][0]), int(coord[0][1])]]
-    #         # print("transformed rep points",transformed)
-    #         rep_points_arr.append(transformed)
-
-    #     # Convert the list to a numpy array
-    #     rep_array = np.array(rep_points_arr)
-    #     print("Points after rep point logic:", rep_array)
-    #     seg_map_ = testing_loop(rep_array)
-    #     print("ground truth mask shape",gt_dilated_mask.shape)
-    #     iou = calculate_iou(seg_map_, gt_dilated_mask)
-    #     print("Updated IoU after representative point :", iou)
-    #     if iou > best_iou:
-    #         best_iou = iou
-    #         best_seg_map = seg_map_
-    #         best_prompt = rep_array  # Update best prompt
-    #         print("Best IoU updated:", best_iou)
-
-
     if best_iou < lower_bound:
         # Process the image using representative point logic
         rep_points = process_single_image_using_rep_point_logic(gt_dilated_mask)
