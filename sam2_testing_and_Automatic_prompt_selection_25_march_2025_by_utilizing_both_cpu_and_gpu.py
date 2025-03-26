@@ -182,6 +182,57 @@ def is_foreground_pixel(x, y, mask):
     return False
 
 
+# def automatic_foreground_prompt_selector_from_image(dilated_mask, org_mask, no_of_prompts):
+#     # Binarize the mask
+#     _, dilated_mask = cv2.threshold(dilated_mask, 128, 255, cv2.THRESH_BINARY)
+
+#     # Find contours in the mask
+#     contours, _ = cv2.findContours(dilated_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+
+#     # Prepare to store selected points for each contour
+#     all_selected_points = []
+
+#     for contour in contours:
+#         # Calculate the bounding rectangle of the contour
+#         x, y, w, h = cv2.boundingRect(contour)
+
+#         # Filter points inside the bounding rectangle but within the contour
+#         contour_points = [
+#             (px, py)
+#             for px in range(x + 2, x + w - 2)  # Exclude the boundary by skipping edges
+#             for py in range(y + 2, y + h - 2)
+#             if cv2.pointPolygonTest(contour, (px, py), False) > 0  # Check if inside the contour
+#         ]
+        
+#         # Randomly select up to 10 points if enough points exist
+#         if len(contour_points) >= 10:
+#             if cv2.contourArea(contour) < 200:
+#                 selected_indices = np.random.choice(len(contour_points), 1, replace=False)
+#             else:
+#                 selected_indices = np.random.choice(len(contour_points), 10, replace=False)
+#             selected_points = [contour_points[i] for i in selected_indices]
+#         else:
+#             selected_points = contour_points
+
+#         # Filter only foreground points
+#         foreground_points = [pt for pt in selected_points if is_foreground_pixel(pt[0], pt[1], org_mask)]
+
+#         # If all selected points are foreground, randomly pick 4 of them
+#         if len(foreground_points)> 4:
+#             selected_indices = np.random.choice(len(foreground_points), no_of_prompts, replace=False)
+#             foreground_points = [foreground_points[i] for i in selected_indices]
+#             all_selected_points.extend(foreground_points)
+        
+#         else:
+#             all_selected_points.extend(foreground_points)
+
+#         # Add the final selected points for the current contour
+       
+#     return foreground_points, all_selected_points
+
+
+
+
 def automatic_foreground_prompt_selector_from_image(dilated_mask, org_mask, no_of_prompts):
     # Binarize the mask
     _, dilated_mask = cv2.threshold(dilated_mask, 128, 255, cv2.THRESH_BINARY)
@@ -203,32 +254,23 @@ def automatic_foreground_prompt_selector_from_image(dilated_mask, org_mask, no_o
             for py in range(y + 2, y + h - 2)
             if cv2.pointPolygonTest(contour, (px, py), False) > 0  # Check if inside the contour
         ]
-        
-        # Randomly select up to 10 points if enough points exist
-        if len(contour_points) >= 10:
-            if cv2.contourArea(contour) < 200:
-                selected_indices = np.random.choice(len(contour_points), 1, replace=False)
-            else:
-                selected_indices = np.random.choice(len(contour_points), 10, replace=False)
-            selected_points = [contour_points[i] for i in selected_indices]
-        else:
-            selected_points = contour_points
-
         # Filter only foreground points
-        foreground_points = [pt for pt in selected_points if is_foreground_pixel(pt[0], pt[1], org_mask)]
+        foreground_points = [pt for pt in contour_points if is_foreground_pixel(pt[0], pt[1], org_mask)]
 
-        # If all selected points are foreground, randomly pick 4 of them
-        if len(foreground_points)> 4:
-            selected_indices = np.random.choice(len(foreground_points), no_of_prompts, replace=False)
-            foreground_points = [foreground_points[i] for i in selected_indices]
-            all_selected_points.extend(foreground_points)
-        
+        # Randomly select up to 10 points if enough points exist
+        if len(foreground_points) > no_of_prompts:
+            if cv2.contourArea(contour) < 200:
+                selected_indices = np.random.choice(len(foreground_points), 1, replace=False)
+            else:
+                selected_indices = np.random.choice(len(foreground_points), no_of_prompts, replace=False)
+            selected_points = [foreground_points[i] for i in selected_indices]
         else:
-            all_selected_points.extend(foreground_points)
+            selected_points = foreground_points
 
-        # Add the final selected points for the current contour
-       
-    return foreground_points, all_selected_points
+        all_selected_points.extend(selected_points)
+ 
+    return selected_points, all_selected_points
+
 
 
 def automatic_foreground_prompt_selector_from_directory(dilated_mask_images_dir,org_mask_dir):
@@ -320,10 +362,16 @@ def load_image_and_points(image_dir, dilated_mask_dir,org_mask_dir):
 
 data_generator_41  = load_image_and_points(image_path,dilated_mask_path,org_mask_path)
 
-models = [
-    ("/media/usama/SSD/Data_for_SAM2_model_Finetuning/Sam2_fine_tuning_/segment-anything-2/sam2_hiera_tiny.pt", "sam2_hiera_t.yaml", "/media/usama/SSD/Data_for_SAM2_model_Finetuning/Sam2_fine_tuning_/segment-anything-2/17_feb_2025_checkpoints/fine_tuned_sam2_tiny_23_march_2025_8_accumulations_step_55.torch","tiny"),
-    ("/media/usama/SSD/Data_for_SAM2_model_Finetuning/Sam2_fine_tuning_/segment-anything-2/sam2_hiera_large.pt", "sam2_hiera_l.yaml", "/media/usama/SSD/Data_for_SAM2_model_Finetuning/Sam2_fine_tuning_/segment-anything-2/17_feb_2025_checkpoints/fine_tuned_sam2_13_feb_2025_with_8_accumulation_steps_90.torch","large")
+#models = [
+ #   ("/media/usama/SSD/Data_for_SAM2_model_Finetuning/Sam2_fine_tuning_/segment-anything-2/sam2_hiera_tiny.pt", "sam2_hiera_t.yaml", "/media/usama/SSD/Data_for_SAM2_model_Finetuning/Sam2_fine_tuning_/segment-anything-2/17_feb_2025_checkpoints/fine_tuned_sam2_tiny_23_march_2025_8_accumulations_step_55.torch","tiny"),
+  #  ("/media/usama/SSD/Data_for_SAM2_model_Finetuning/Sam2_fine_tuning_/segment-anything-2/sam2_hiera_large.pt", "sam2_hiera_l.yaml", "/media/usama/SSD/Data_for_SAM2_model_Finetuning/Sam2_fine_tuning_/segment-anything-2/17_feb_2025_checkpoints/fine_tuned_sam2_13_feb_2025_with_8_accumulation_steps_90.torch","large")
+#]
+
+
+models = [("/media/usama/SSD/Data_for_SAM2_model_Finetuning/Sam2_fine_tuning_/segment-anything-2/sam2_hiera_large.pt", "sam2_hiera_l.yaml", "/media/usama/SSD/Data_for_SAM2_model_Finetuning/Sam2_fine_tuning_/segment-anything-2/17_feb_2025_checkpoints/fine_tuned_sam2_13_feb_2025_with_8_accumulation_steps_90.torch","large"),
+("/media/usama/SSD/Data_for_SAM2_model_Finetuning/Sam2_fine_tuning_/segment-anything-2/sam2_hiera_tiny.pt", "sam2_hiera_t.yaml", "/media/usama/SSD/Data_for_SAM2_model_Finetuning/Sam2_fine_tuning_/segment-anything-2/17_feb_2025_checkpoints/fine_tuned_sam2_tiny_23_march_2025_8_accumulations_step_55.torch","tiny")
 ]
+
 
 def load_model(model_cfg,sam2_checkpoint,fine_tuned_sam2_checkpoint):
     sam2_model_cuda = build_sam2(model_cfg, sam2_checkpoint, device="cuda")
@@ -393,7 +441,8 @@ def calculate_best_iou(gt_dilated_mask, gt_org_mask, no_of_prompt, best_iou, bes
                 input_points_31 =  np.array(all_selected_points_1).reshape(-1, 1, 2)
                 # Generate new segmentation map and compute IoU
                 seg_map_ = testing_loop(input_points_31)
-                iou = calculate_iou(seg_map_, gt_dilated_mask)
+                # iou = calculate_iou(seg_map_, gt_dilated_mask)
+                iou = calculate_iou(seg_map_, gt_org_mask)
                 # print("Updated IoU:", iou)
 
                 # Update the best segmentation map and IoU if it improves
@@ -411,8 +460,8 @@ def calculate_best_iou(gt_dilated_mask, gt_org_mask, no_of_prompt, best_iou, bes
 
 
 # Ensure the output directory exists
-output_txt_files_dir = "/media/usama/SSD/Usama_dev_ssd/Zoning_segmentation_code/image_segmentation_and_denoising/clustering_results_26_feb_2025/4_maps_results/demo141/test_Samples_12_march_2025/sam2_outputs_with_no_parrallel_processing/txt_files_25_march_2025_22"
-output_masks_dir ="/media/usama/SSD/Usama_dev_ssd/Zoning_segmentation_code/image_segmentation_and_denoising/clustering_results_26_feb_2025/4_maps_results/demo141/test_Samples_12_march_2025/sam2_outputs_with_no_parrallel_processing/mask_files_25_march_2025_22"
+output_txt_files_dir = "/media/usama/SSD/Usama_dev_ssd/Zoning_segmentation_code/image_segmentation_and_denoising/clustering_results_26_feb_2025/4_maps_results/demo141/test_Samples_12_march_2025/sam2_outputs_with_no_parrallel_processing/txt_files_26_march_2025_33"
+output_masks_dir ="/media/usama/SSD/Usama_dev_ssd/Zoning_segmentation_code/image_segmentation_and_denoising/clustering_results_26_feb_2025/4_maps_results/demo141/test_Samples_12_march_2025/sam2_outputs_with_no_parrallel_processing/mask_files_26_march_2025_33"
 # output_images_dir = "/media/usama/SSD/Data_for_SAM2_model_Finetuning/Evaluation_results_17_feb_2025/image_files_21_feb_2025_30_itterations_test_set_25_feb_2025_latest_with_one_two_three_and_four_points"
 
 os.makedirs(output_txt_files_dir, exist_ok=True)
@@ -450,7 +499,8 @@ for idx, (img1, gt_dilated_mask,gt_org_mask, input_points_21, img_name) in enume
             
             # Initial segmentation and IoU
             seg_map = testing_loop(input_points_21)
-            iou = calculate_iou(seg_map, gt_dilated_mask)
+            # iou = calculate_iou(seg_map, gt_dilated_mask)
+            iou = calculate_iou(seg_map, gt_org_mask)
             # print("Initial IoU:", iou)
 
             # # Initialize variables to retain the best segmentation map
@@ -531,9 +581,6 @@ for idx, (img1, gt_dilated_mask,gt_org_mask, input_points_21, img_name) in enume
 
 
     txt_filename = os.path.join(output_txt_files_dir, f"{os.path.splitext(img_name)[0]}.txt")
-    # print("after")
-    # print(f"Best Iou {model_name} :", best_iou)
-    # print("###########################################################################")
 
     
     # # Save the best prompt and IoU to the text file
@@ -544,6 +591,11 @@ for idx, (img1, gt_dilated_mask,gt_org_mask, input_points_21, img_name) in enume
                 # if len(point) == 2:
                 file.write(f"{pt[0]},{pt[1]}\n")
     
+    
+    # if best_iou < 0.96:
+    #     print(f"Best Iou {best_iou} is less than 0.96")
+    #     best_seg_map = gt_org_mask.copy()
+    #     print("Dilated image is returned!")
     
     cv2.imwrite(f"{output_masks_dir}/{img_name}",best_seg_map)
    
