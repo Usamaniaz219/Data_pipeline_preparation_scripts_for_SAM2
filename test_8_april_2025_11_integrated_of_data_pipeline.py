@@ -211,7 +211,10 @@ def create_directory_structure(image_path, mask_dir):
     image_name = os.path.splitext(os.path.basename(image_path))[0]
 
     # Root directory
-    root_image_dir = image_name
+    # root_image_dir = image_name
+    base_dir = "/media/usama/42F84FDFF84FCFB9/usama-dev/Meanshift_for_Zone_Segmentation/denoise_mask_tiles/"
+    root_image_dir  = os.path.join(base_dir,image_name)
+
     images_dir = os.path.join(root_image_dir, "images")
     masks_sub_dir = os.path.join(root_image_dir, "masks", image_name)
     outputs_dir = os.path.join(root_image_dir, "outputs")
@@ -309,14 +312,14 @@ def process_images(org_map_dir, ms_org_masks_directory, denoise_masks_outputs, m
                     os.makedirs(output_dir, exist_ok=True)
 
                     print(f"Processing: Image = {filename}, Mask Dir = {dir1}")
-                    process_masks(image_path, dir1_path, output_dir)
+                    # process_masks(image_path, dir1_path, output_dir)
                     
     for dir2 in os.listdir(denoise_masks_outputs):
         dir2_path = os.path.join(denoise_masks_outputs, dir2)
         merged_denoise_masks_outputs_path = os.path.join(merged_denoise_masks_outputs, dir2)
         os.makedirs(merged_denoise_masks_outputs_path, exist_ok=True)
         copy_dirs(dir2_path,merged_denoise_masks_outputs_path)
-        # dir2_path = os.path.join(denoise_masks_outputs, dir2)
+        dir2_path = os.path.join(denoise_masks_outputs, dir2)
         merge_mask_polygons(merged_denoise_masks_outputs_path)
 
     for dir3 in os.listdir(merged_denoise_masks_outputs):
@@ -326,10 +329,18 @@ def process_images(org_map_dir, ms_org_masks_directory, denoise_masks_outputs, m
             # create_directory_structure(map_image_path, merged_denoise_masks_outputs)
             images_dir,outputs_dir = create_directory_structure(map_image_path, merged_denoise_masks_outputs)
             process_full_pipeline(images_dir, images_dir, outputs_dir)
+            print("output directory",outputs_dir)
 
-            # process_full_pipeline(input_base_dir, output_base_dir)
+    for dir4 in os.listdir(denoise_masks_outputs):
+        map_image_path = os.path.join(org_map_dir,f"{dir4}.jpg")
+        if map_image_path is not None:
+            # dir3_path = os.path.join(merged_denoise_masks_outputs, dir3)
+            # create_directory_structure(map_image_path, merged_denoise_masks_outputs)
+            images_dir,outputs_dir = create_directory_structure(map_image_path, denoise_masks_outputs)
+            process_full_pipeline(images_dir, images_dir, outputs_dir)
 
 
+    
 
 
 
@@ -337,11 +348,11 @@ def main():
     
     # image_path = "/media/usama/SSD/Usama_dev_ssd/Zoning_segmentation_code/image_segmentation_and_denoising/clustering_results_26_feb_2025/4_maps_results/input__map_images/demo115.jpg"
     input_directory = "/media/usama/42F84FDFF84FCFB9/usama-dev/Meanshift_for_Zone_Segmentation/test_demo115_22/"
-    ms_org_masks_directory = "/media/usama/42F84FDFF84FCFB9/usama-dev/Meanshift_for_Zone_Segmentation/ms_org_outputs_22/"
+    ms_org_masks_directory = "/media/usama/42F84FDFF84FCFB9/usama-dev/Meanshift_for_Zone_Segmentation/ms_org_outputs_34/"
 
     # Base directory where masks are stored
-    denoise_masks_outputs = "/media/usama/42F84FDFF84FCFB9/usama-dev/Meanshift_for_Zone_Segmentation/ms_denoised_outputs_22/"
-    merged_denoise_masks_outputs = "/media/usama/42F84FDFF84FCFB9/usama-dev/Meanshift_for_Zone_Segmentation/ms_merged_denoised_outputs_22/"
+    denoise_masks_outputs = "/media/usama/42F84FDFF84FCFB9/usama-dev/Meanshift_for_Zone_Segmentation/ms_denoised_outputs_34/"
+    merged_denoise_masks_outputs = "/media/usama/42F84FDFF84FCFB9/usama-dev/Meanshift_for_Zone_Segmentation/ms_merged_denoised_outputs_34/"
 
     process_images(input_directory, ms_org_masks_directory,denoise_masks_outputs,merged_denoise_masks_outputs)
 
